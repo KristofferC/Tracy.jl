@@ -34,7 +34,6 @@ export @zone
 # Private methods #
 ###################
 
-const ID = gensym(:id)
 const META = gensym(:meta)
 const METAType = Vector{Pair{JuliaSrcLoc, Ref{DeclaredSrcLoc}}}
 
@@ -48,8 +47,6 @@ end
 function initmeta(m::Module)
     if !isdefined(m, META) || getfield(m, META) === nothing
         Core.eval(m, :($META = $(METAType())))
-        Core.eval(m, :($ID() = nothing))
-        Core.eval(m, :($Tracy.zone_enabled(::Val{$ID}, ::Val) = true))
     end
     nothing
 end
@@ -88,14 +85,8 @@ function __init__()
         for m in modules
             for (i, (_, c_srcloc)) in enumerate(meta(m))
                 if pointer_from_objref(c_srcloc) == srcloc
-                    m_id = getfield(m, ID)
                     old_enable = c_srcloc[].enabled
                     if enable != old_enable
-                        if old_enable == 0xFF
-                            Core.eval(m, :($Tracy.zone_enabled(::Val{$m_id}, ::Val{$i}) = true))
-                        elseif enable == 0xFF
-                            Core.eval(m, :($Tracy.zone_enabled(::Val{$m_id}, ::Val{$i}) = false))
-                        end
                         c_srcloc[] = DeclaredSrcLoc(c_srcloc[].srcloc, c_srcloc[].module_name, enable)
                     end
                     return nothing

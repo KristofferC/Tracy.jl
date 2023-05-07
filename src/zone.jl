@@ -39,27 +39,21 @@ function _zone(name::String, ex::Expr, mod::Module, filepath::String, line::Int)
     c_srcloc = Ref{DeclaredSrcLoc}(DeclaredSrcLoc(TracySrcLoc(C_NULL, C_NULL, C_NULL, 0, 0), C_NULL, 1))
     push!(meta(mod), Pair(srcloc, c_srcloc))
 
-    N = length(meta(mod))
-    m_id = getfield(mod, ID)
     return quote
-        if zone_enabled(Val($m_id), Val($N))
-            if $c_srcloc[].module_name == C_NULL
-                update_srcloc!($c_srcloc, $srcloc, $mod)
-            end
-            local ptr = pointer_from_objref($c_srcloc)
-            local ctx = ccall(
-                        (:___tracy_emit_zone_begin, libtracy),
-                        TracyZoneContext, (Ptr{Cvoid}, Cint),
-                        ptr, unsafe_load(Ptr{DeclaredSrcLoc}(ptr)).enabled)
+        if $c_srcloc[].module_name == C_NULL
+            update_srcloc!($c_srcloc, $srcloc, $mod)
         end
+        local ptr = pointer_from_objref($c_srcloc)
+        local ctx = ccall(
+                    (:___tracy_emit_zone_begin, libtracy),
+                    TracyZoneContext, (Ptr{Cvoid}, Cint),
+                    ptr, unsafe_load(Ptr{DeclaredSrcLoc}(ptr)).enabled)
 
         $(Expr(:tryfinally,
             :($(esc(ex))),
             quote
-                if zone_enabled(Val($m_id), Val($N))
-                    ccall((:___tracy_emit_zone_end, libtracy),
-                        Cvoid, (TracyZoneContext,), ctx)
-            end
+                ccall((:___tracy_emit_zone_end, libtracy),
+                    Cvoid, (TracyZoneContext,), ctx)
         end
         ))
     end
