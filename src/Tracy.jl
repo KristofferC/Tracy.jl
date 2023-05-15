@@ -20,10 +20,12 @@ module Tracy
 using LibTracyClient_jll: libTracyClient
 using Libdl: dllist, dlopen
 
-include("./cffi.jl")
-include("./tracepoint.jl")
+include("cffi.jl")
+include("tracepoint.jl")
+include("msg.jl")
+include("plot.jl")
 
-export @tracepoint
+export @tracepoint, tracymsg, @tracyplot
 
 # Remaining public API is:
 #   - `enable_tracepoint`
