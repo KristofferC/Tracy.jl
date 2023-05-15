@@ -20,8 +20,9 @@ module Tracy
 using LibTracyClient_jll: libTracyClient
 using Libdl: dllist, dlopen
 
-include("./cffi.jl")
-include("./tracepoint.jl")
+include("utils.jl")
+include("cffi.jl")
+include("tracepoint.jl")
 
 export @tracepoint
 

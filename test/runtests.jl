@@ -11,6 +11,12 @@ module BasicTests
         error("oh no!")
     end
 
+    g() = "Hello, world!"
+    @tracepoint "test tracepoint with call" text=g() nothing
+    @tracepoint "test tracepoint with text expr" text=1+1 nothing
+    @tracepoint "test tracepoint with text int" text=1 nothing
+    @tracepoint "test tracepoint with text strlit" text="lit" nothing
+
     Pkg.activate("TestPkg")
     Pkg.develop(; path = joinpath(@__DIR__, ".."))
     # Test that a precompiled package also works,

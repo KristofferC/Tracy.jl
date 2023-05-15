@@ -24,22 +24,40 @@ be changed at runtime.
 If you don't have Tracy installed, you can install `TracyProfiler_jll`
 and start it with `run(TracyProfiler_jll.tracy(); wait=false)`.
 
-```jldoctest
+```jldoctest tracy
 julia> x = rand(10,10);
 
 julia> @tracepoint "multiply" x * x;
 ```
+
+You can add a (dynamic) text to the tracepoint:
+
+```jldoctest tracy
+julia> @tracepoint "multiply text" text="\$x * \$x" x * x;
+```
 """
-macro tracepoint(name::String, ex::Expr)
-    return _tracepoint(name, ex, __module__, string(__source__.file), __source__.line)
+macro tracepoint(name::String, ex...)
+    ex, kws = extract_kwargs(ex)
+    return _tracepoint(name, ex, __module__, string(__source__.file), __source__.line; kws...)
 end
 
-function _tracepoint(name::String, ex::Expr, mod::Module, filepath::String, line::Int)
+function _tracepoint(name::String, ex, mod::Module, filepath::String, line::Int; text=nothing)
     srcloc = TracySrcLoc(name, nothing, filepath, line, 0, mod, true)
     push!(meta(mod), srcloc)
 
     N = length(meta(mod))
     m_id = getfield(mod, ID)
+
+    #
+    text_expr = if text !== nothing
+        quote
+            text_eval = string($text)
+            @ccall libtracy.___tracy_emit_zone_text(ctx::TracyZoneContext, text_eval::Cstring, length(text_eval)::Csize_t)::Cvoid;
+        end
+    else
+        :()
+    end
+
     return quote
         if tracepoint_enabled(Val($m_id), Val($N))
             if $srcloc.file == C_NULL
@@ -47,6 +65,7 @@ function _tracepoint(name::String, ex::Expr, mod::Module, filepath::String, line
             end
             local ctx = @ccall libtracy.___tracy_emit_zone_begin(pointer_from_objref($srcloc)::Ptr{Cvoid},
                                                                  $srcloc.enabled::Cint)::TracyZoneContext
+            $text_expr
         end
         $(Expr(:tryfinally,
             :($(esc(ex))),
